@@ -1,0 +1,37 @@
+plugins {
+    id 'groovy'
+    id 'ru.vyarus.use-python' version '2.2.0'
+}
+
+group 'com.github.pierre-ernst'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+python {
+    pip 'detect-secrets:0.13.1'
+}
+
+task detectSecrets(type: PythonTask) {
+    dependsOn(tasks.build)
+
+    command = "-c \"import sys; from detect_secrets.pre_commit_hook import main; sys.exit(main([" +
+            "'--no-keyword-scan', '--base64-limit', '4', '--hex-limit', '4', '--baseline', '.secrets.baseline.json'"
+
+    projectDir.traverse { file ->
+        if (file.isFile()
+                && file.getAbsolutePath().split("/").every { pathElement -> !pathElement.startsWith(".") }
+                && tasks.processResources.inputs.files.contains(file)) {
+            command += ", '$file'"
+        }
+    }
+
+    command += "]))\""
+}
+
+dependencies {
+    implementation(group: 'org.codehaus.groovy', name: 'groovy-all', version: '2.3.11')
+    testImplementation(group: 'junit', name: 'junit', version: '4.12')
+}
