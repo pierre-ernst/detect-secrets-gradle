@@ -49,6 +49,9 @@ Using pip 20.0.2 from /Users/pierre/Developer/detect-secrets-gradle/.gradle/pyth
 FAILURE: Build failed with an exception.
 ```
 
-### Source Code
+### Understanding the Source Code
 The main file is [build.gradle.kts](build.gradle.kts).
 All the other files are used to trigger the scanner since they contain various secrets
+
+### Running with your own repo
+Just copy the portions of [build.gradle.kts](build.gradle.kts) applicable to your project
