@@ -2,14 +2,15 @@
 
 [detect-secrets](https://github.com/Yelp/detect-secrets) is a Python module for identifying hard-coded secrets in source code (think passwords, secret keys, etc...)
 This repo is a POC for triggering an incremental detect-secrets scan from a gradle build task.
-The implementation relies on the [gradle-use-python-plugin](https://github.com/xvik/gradle-use-python-plugin) gradle plugin (allowing to run Python modules from gradle)
+The implementation relies on docker (allowing to run Python modules from gradle)
 
 ## Prerequisite
 
 1. Only git folders can be scanned (`git init` or cloning and existing repo)
 1. A baseline scan of your repo is required before you can use this gradle task, and the results must be committed to a file named `.secrets.baseline.json`:
 ```
-$ detect-secrets scan --no-keyword-scan --base64-limit 4 --hex-limit 4 . > .secrets.baseline.json 
+$ docker pull clmdevops/detect-secrets
+$ docker run -it --mount type=bind,source="$(pwd)",target=/source,readonly clmdevops/detect-secrets detect-secrets scan --no-keyword-scan --base64-limit 4 --hex-limit 4 --exclude-files .secrets.baseline.json /source 
 ```
 
 ## Usage
