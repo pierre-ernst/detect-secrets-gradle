@@ -1,7 +1,5 @@
-import ru.vyarus.gradle.plugin.python.task.PythonTask
-
 group = "com.github.pierre-ernst"
-version = "1.0-SNAPSHOT"
+version = "1.1-SNAPSHOT"
 
 // Settings for detect-secrets
 val detectSecret = mapOf(
@@ -9,21 +7,8 @@ val detectSecret = mapOf(
         "entropyThreshold" to 4
 )
 
-dependencies {
-    implementation("org.codehaus.groovy:groovy-all:3.0.4") {
-        // https://groovy-lang.org/releasenotes/groovy-3.0.html#Groovy3.0releasenotes-3.0.4
-        exclude("org.codehaus.groovy:groovy-testng")
-    }
-}
-
 plugins {
     id("groovy")
-    id("ru.vyarus.use-python") version "2.2.0"
-}
-
-// Import detect-secrets Python module with PythonTask Gradle plugin
-python {
-    pip("detect-secrets:0.13.1")
 }
 
 repositories {
@@ -31,7 +16,7 @@ repositories {
 }
 
 /**
- * Run external process $git diff --name-only
+ * Run external process $git status --porcelain=v1
  * and collect its output to a list of comma-separated file paths
  *
  * This is used to know which local files have changed and should be scanned
@@ -40,14 +25,38 @@ fun gitHistory(): String {
     var args = ""
 
     Runtime.getRuntime().exec(arrayOf(
-            "/usr/bin/git", "diff", "--name-only")) // --staged
+            "/usr/bin/git", "status", "--porcelain=v1"))
             .inputStream.reader().buffered()
             .lines()
-            .forEach { file ->
-                args += ", '$file'"
+            .forEach { line ->
+                if (line.trim().split(" ").size == 2) {
+                    val status = line.trim().split(" ")[0].trim()
+                    val file = line.trim().split(" ")[1]
+                    /**
+                     *
+                     * ' ' = unmodified
+                     * ? = untracked
+                     * M = modified
+                     * A = added
+                     * D = deleted
+                     * R = renamed
+                     * C = copied
+                     * U = updated but unmerged
+                     */
+                    if (status.startsWith("M") || status.startsWith("A") || status.startsWith("U")) {
+                        args += ", '$file'"
+                    }
+                }
             }
 
     return args
+}
+
+/**
+ * Downloads the required docker image
+ */
+tasks.register<Exec>("dockerPull") {
+    commandLine("docker", "pull", "clmdevops/detect-secrets")
 }
 
 /**
@@ -56,13 +65,24 @@ fun gitHistory(): String {
  *  - const values settings
  * and propagate its return value to PASS/FAIL the gradle task
  */
-tasks.register("detectSecrets", PythonTask::class) {
-    dependsOn("assemble")
+tasks.register<Exec>("detectSecrets") {
+    dependsOn("dockerPull")
     description = "Run detect-secrets python module to scan modified files for hard-coded secrets (passwords, keys, ...)"
 
-    command = "-c \"import sys; from detect_secrets.pre_commit_hook import main; sys.exit(main([" +
-            "'--base64-limit', '${detectSecret["entropyThreshold"]}', '--hex-limit', '${detectSecret["entropyThreshold"]}', " +
+    val cwd = project.rootProject.projectDir.absolutePath
+    val pythonBootstrapCode = "import sys; import os; from detect_secrets.pre_commit_hook import main; os.chdir('/source');" +
+            "sys.exit(main(['--base64-limit', '${detectSecret["entropyThreshold"]}', '--hex-limit', " +
+            "'${detectSecret["entropyThreshold"]}', " +
             "'--no-keyword-scan', '--baseline', '${detectSecret["baselineFile"]}'" +
-            "${gitHistory()}" +
-            "]))\""
+            "${gitHistory()}]))"
+
+    commandLine("docker", "run",
+            "-i", "-a", "stdout", "-a", "stderr",
+            "--mount", "type=bind,source=$cwd,target=/source,readonly",
+            "clmdevops/detect-secrets"
+    )
+
+    doFirst {
+        standardInput = pythonBootstrapCode.toByteArray().inputStream()
+    }
 }
