@@ -10,7 +10,7 @@ The implementation relies on docker (allowing to run Python modules from gradle)
 1. A baseline scan of your repo is required before you can use this gradle task, and the results must be committed to a file named `.secrets.baseline.json`:
 ```
 $ docker pull clmdevops/detect-secrets
-$ docker run -it --mount type=bind,source="$(pwd)",target=/source,readonly clmdevops/detect-secrets detect-secrets scan --no-keyword-scan --base64-limit 4 --hex-limit 4 --exclude-files .secrets.baseline.json /source 
+$ docker run -it -a stdout clmdevops/detect-secrets detect-secrets scan --no-keyword-scan --base64-limit 4 --hex-limit 4 . > .secrets.baseline.json
 ```
 
 ## Usage
