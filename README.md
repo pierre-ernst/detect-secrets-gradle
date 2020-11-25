@@ -6,7 +6,7 @@ The implementation relies on docker (allowing to run Python modules from gradle)
 
 ## Prerequisite
 
-1. Only git folders can be scanned (`git init` or cloning and existing repo)
+1. Only git folders can be scanned (`git init` or cloning an existing repo)
 1. A baseline scan of your repo is required before you can use this gradle task, and the results must be committed to a file named `.secrets.baseline.json`:
 ```
 $ docker pull clmdevops/detect-secrets
