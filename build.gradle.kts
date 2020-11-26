@@ -4,7 +4,7 @@ version = "1.1-SNAPSHOT"
 // Settings for detect-secrets
 val detectSecret = mapOf(
         "baselineFile" to ".secrets.baseline.json",
-        "entropyThreshold" to 4
+        "exclude" to "package-lock.json"
 )
 
 plugins {
@@ -71,8 +71,7 @@ tasks.register<Exec>("detectSecrets") {
 
     val cwd = project.rootProject.projectDir.absolutePath
     val pythonBootstrapCode = "import sys; import os; from detect_secrets.pre_commit_hook import main; os.chdir('/source');" +
-            "sys.exit(main(['--base64-limit', '${detectSecret["entropyThreshold"]}', '--hex-limit', " +
-            "'${detectSecret["entropyThreshold"]}', " +
+            "sys.exit(main(['--exclude-files', '${detectSecret["exclude"]}', " +
             "'--no-keyword-scan', '--baseline', '${detectSecret["baselineFile"]}'" +
             "${gitHistory()}]))"
 
